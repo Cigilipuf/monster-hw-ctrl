@@ -113,7 +113,7 @@ pip3 install psutil
 ### Hızlı Kurulum / Quick Install
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/monster-hw-ctrl.git
+git clone https://github.com/Cigilipuf/monster-hw-ctrl.git
 cd monster-hw-ctrl
 sudo bash install.sh
 ```

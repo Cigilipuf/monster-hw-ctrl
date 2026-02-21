@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC
+ "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<policyconfig>
+
+  <vendor>Monster HW Controller</vendor>
+  <vendor_url>https://github.com/monster-hw-ctrl</vendor_url>
+
+  <action id="com.monster.hwctrl.launch">
+    <description>Monster TULPAR T5 Donanım Kontrolcüsünü Başlat</description>
+    <message>Donanım kontrolcüsünü çalıştırmak için yetkilendirme gerekiyor</message>
+    <icon_name>preferences-system</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/opt/monster-hw-ctrl/monster-hw-ctrl.sh</annotate>
+    <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
+  </action>
+
+</policyconfig>

@@ -1,0 +1,23 @@
+[Unit]
+Description=Monster TULPAR T5 Hardware Controller Daemon
+After=multi-user.target graphical.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 -m src.main --daemon
+WorkingDirectory=/opt/monster-hw-ctrl
+Restart=on-failure
+RestartSec=5
+User=root
+
+# Güvenlik
+ProtectSystem=false
+ProtectHome=false
+NoNewPrivileges=false
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

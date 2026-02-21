@@ -198,6 +198,152 @@ journalctl -u monster-hw-ctrl -f          # Loglar / Logs
 
 ---
 
+## 🔬 Donanım Uyumluluk Analizi / Hardware Compatibility Analysis
+
+> **Bu bölüm kapsamlı teknik araştırma sonucu hazırlanmıştır. Her özellik için uyumluluk ayrı ayrı değerlendirilmiştir.**
+>
+> **This section is the result of thorough technical research. Compatibility is assessed per-feature.**
+
+### Bileşen Bazlı Uyumluluk / Per-Component Compatibility
+
+#### ⚡ CPU Kontrolü (`intel_pstate`)
+
+| Durum | Koşul |
+|---|---|
+| ✅ **Tam çalışır** | Intel 8.–14. nesil laptop (Coffee Lake H → Raptor Lake H) — `intel_pstate` aktif |
+| ⚠️ **Kısmi** | Intel 6.–7. nesil — `intel_pstate` var ama EPP & HWP desteği zayıf |
+| ❌ **Çalışmaz** | **AMD Ryzen tüm nesiller** — `amd-pstate` / `acpi-cpufreq` kullanır; `intel_pstate` yolu mevcut değil |
+
+> **Not:** `cpu_freq_max_khz = 5000000` (5 GHz) i7-10750H'ye özgü hardcode değerdir. Başka CPU'larda frekans slider'ı yanlış aralık gösterebilir; ancak `scaling_max_freq` sysfs'e doğru değer yazılır.
+
+---
+
+#### 🎮 NVIDIA GPU Kontrolü
+
+| Durum | Koşul |
+|---|---|
+| ✅ **Tam çalışır** | Herhangi bir laptop + NVIDIA dGPU + proprietary driver (`nvidia-smi` mevcut) |
+| ⚠️ **Güç limiti çalışır, saat limitleri yanlış** | RTX 2060 dışı NVIDIA GPU'lar: kod `NVIDIA_CLOCK_MAX=2100 MHz` sabit değer kullanır. GUI slider aralığı hatalı görünebilir; ancak `nvidia-smi -lgc` kendi limitini uygular |
+| ❌ **Çalışmaz** | AMD Radeon dGPU (nvidia-smi yok), Intel Arc (nvidia-smi yok) |
+
+---
+
+#### 🔷 Intel iGPU Frekans Kontrolü
+
+| Durum | Koşul |
+|---|---|
+| ✅ **Tam çalışır** | Intel UHD (CometLake-H GT2, 350–1150 MHz) — aynı `/sys/class/drm/card0/gt_*` dosyaları |
+| ⚠️ **Çalışır, aralık yanlış** | Diğer Intel iGPU nesilleri: UHD 620 (300–1100), Tiger Lake Iris Xe (400–1500), Alder Lake (300–1450) — sysfs API aynı, GUI slider aralığı hatalı gösterir |
+| ❌ **Çalışmaz** | AMD Vega/RDNA iGPU (`/sys/class/drm/card0/gt_*` yok), NVIDIA-only laptoplar |
+
+---
+
+#### 🌡️ Sıcaklık İzleme
+
+| Sensor | Durum | Açıklama |
+|---|---|---|
+| `coretemp` (CPU) | ✅ Tüm Intel CPU | Evrensel Intel sensörü |
+| `acpitz` (ACPI) | ✅ Neredeyse evrensel | Çoğu laptopta mevcut |
+| `nvme` | ✅ Evrensel | NVMe SSD olan her sistemde |
+| `pch_cometlake` | ⚠️ Sadece 10. nesil | Diğer nesiLler: `pch_cannonlake`, `pch_tigerlake`, `pch_alderlake` — dinamik keşif ile bulunabilir ama etiket "PCH" gösteremez |
+| `iwlwifi_1` | ⚠️ Sadece Intel WiFi | Qualcomm/Atheros WiFi'da görünmez |
+| `k10temp` (AMD CPU) | ❌ Desteklenmiyor | AMD CPU'larda `coretemp` yok, kod `k10temp`'i tanımıyor |
+
+---
+
+#### 🌀 Fan Kontrolü (Embedded Controller)
+
+Fan kontrolü **en kısıtlı** bileşendir. Kodun kullandığı EC register adresleri **Clevo OEM standardına** özgüdür:
+
+```
+0x68 → CPU fan duty (yazma)
+0x69 → GPU fan duty (yazma)
+0xCE/0xCF → CPU fan RPM (okuma)
+0xD0/0xD1 → GPU fan RPM (okuma)
+0xD7 → Fan modu auto/manual
+```
+
+**⚠️ ÖNEMLİ UYARI:** Bu adresler MSI EC haritasıyla **çakışır ama farklı anlam taşır!**  
+MSI'da `0x68` = `realtime_cpu_temp` (okuma) iken bizde `0x68` = CPU fan duty (yazma).  
+**MSI laptoplarda fan kontrolünü çalıştırmaya çalışmak tehlikeli olabilir.**
+
+---
+
+### 🏭 Marka & Model Uyumluluk Tablosu / Brand & Model Compatibility Table
+
+#### Monster Notebook (Türkiye)
+
+Monster Notebook, Clevo/Tongfang OEM şasesi kullanan Türk bir marka olup farklı serilerde farklı EC haritaları bulunabilir.
+
+| Model Serisi | CPU Fan EC | GPU Fan EC | CPU Kontrol | GPU Kontrol | Notlar |
+|---|---|---|---|---|---|
+| **TULPAR T5 V19.2** | ✅ **Onaylı** | ✅ **Onaylı** | ✅ | ✅ | Bu uygulama için geliştirilen referans donanım |
+| TULPAR T5 V18.x / V17.x | ⚠️ Muhtemelen | ⚠️ Muhtemelen | ✅ | ✅ | Aynı Clevo şasesi, EC register'ları büyük olasılıkla aynı; **test edilmedi** |
+| TULPAR T5 V20.x+ (11. nesil+) | ⚠️ Belirsiz | ⚠️ Belirsiz | ✅ | ✅ | Yeni nesil EC değişmiş olabilir; **test edilmedi** |
+| **TULPAR T7 V19.x** (17") | ⚠️ Muhtemelen | ⚠️ Muhtemelen | ✅ | ✅ | Clevo 17" şasesi; CPU fan register'ı farklı olabilir; **test edilmedi** |
+| **ABRA A5 / A7** | ⚠️ Belirsiz | ⚠️ Belirsiz | ✅ | ✅ | ABRA serisinin bazı modelleri farklı EC şasesi kullanır; **test edilmedi** |
+| HUMA H4 / H5 | ❓ Bilinmiyor | ❓ Bilinmiyor | ✅ (Intel ise) | — | Ultrabook şasesi; EC fan kontrol arayüzü farklı olabilir |
+| SEMRUK S5 / S7 | ❓ Bilinmiyor | ⚠️ Belirsiz | ✅ | ✅ | Workstation şasesi |
+
+#### Clevo OEM Resellerları / Clevo OEM Resellers
+
+Aşağıdaki markalar Clevo barebone şasesini satın alıp kendi logolarıyla satar. Aynı EC register haritasını paylaşma olasılıkları yüksektir **ancak kesin değildir** — nesil ve model farkına göre değişir.
+
+| Marka | Ülke | Tahmini Fan EC Uyumu | CPU Kontrol | Notlar |
+|---|---|---|---|---|
+| **XMG / Schenker** | Almanya | ⚠️ Muhtemelen (Clevo şaseli modeller) | ✅ (Intel ise) | XMG bazı modeller Tongfang kullanır |
+| **Nexoc** | Almanya | ⚠️ Muhtemelen | ✅ | |
+| **MIFCOM** | Almanya | ⚠️ Muhtemelen | ✅ | |
+| **Sager** | ABD | ⚠️ Muhtemelen | ✅ | Clevo'nun ABD distribütörü |
+| **Metabox / Aftershock** | Avustralya/Singapur | ⚠️ Muhtemelen | ✅ | |
+| **PCSpecialist** | İngiltere | ⚠️ Muhtemelen | ✅ | Bazı modeller Clevo, bazıları farklı |
+| **Eurocom** | Kanada | ⚠️ Muhtemelen | ✅ | |
+| **TUXEDO Computers** | Almanya | ⚠️ Karışık | ✅ (Intel) | Clevo VE Tongfang/Uniwill modelleri var; `clevo-acpi` sürücüsü farklı arayüz sunar |
+| **Casper Excalibur** | Türkiye | ⚠️ Belirsiz | ✅ | Bazı modeller Clevo, bazıları Tongfang |
+
+#### Kesinlikle Uyumsuz / Definitely Incompatible (Fan EC)
+
+| Marka | Neden |
+|---|---|
+| **MSI** | Tamamen farklı EC register haritası — `0x68` MSI'da `realtime_cpu_temp` okuma addr. Yazmak **tehlikeli** |
+| **ASUS** | WMI/ACPI tabanlı fan kontrol (`asus-wmi` kernel driver) |
+| **Lenovo** | ACPI fan kontrol (EC doğrudan erişim değil) |
+| **Dell** | Dell SMBIOS tabanlı fan kontrol |
+| **HP** | Özel ACPI/BIOS arayüzü |
+| **Acer / Predator** | Özel WMI arayüzü |
+| **Razer** | openrazer + özel EC |
+| **Tongfang** | Farklı EC register haritası (XMG Fusion, bazı Casper modelleri) |
+
+---
+
+### 📊 Genel Uyumluluk Özeti / Overall Compatibility Summary
+
+```
+Özellik               Monster TULPAR  Diğer Monster   Clevo OEM      MSI    ASUS/Dell/HP
+─────────────────────────────────────────────────────────────────────────────────────────
+CPU Frekans (Intel)   ✅ Tam          ✅ Tam           ✅ Tam         ✅     ✅
+CPU Frekans (AMD)     ❌ Yok          ❌ Yok           ❌ Yok         ❌     ❌
+NVIDIA GPU            ✅ Tam          ✅ Tam           ✅ Tam         ✅     ✅
+Intel iGPU            ✅ Tam          ⚠️ Kısmi        ⚠️ Kısmi      ⚠️    ⚠️
+Sıcaklık İzleme       ✅ Tam          ✅ Büyük ölçüde  ✅ Büyük ölçüde ✅   ✅
+Fan Kontrolü (EC)     ✅ Onaylı       ⚠️ Test gerekli ⚠️ Test gerekli ⛔ TEHLİKE ❌
+```
+
+### ℹ️ Diğer Modeller İçin Ne Yapmalı? / What To Do For Other Models?
+
+Fan kontrolü farklı Clevo OEM modellerinde de çalışabilir; ancak EC register adreslerini doğrulamak gerekir:
+
+1. `sudo modprobe ec_sys write_support=1`
+2. EC dump alın: `sudo hexdump -C /sys/kernel/debug/ec/ec0/io | head -20`
+3. Fan RPM değerlerini `0xCE / 0xCF / 0xD0 / 0xD1` adreslerinde okuyun
+4. Gerçek RPM ile karşılaştırın
+5. Uyuyorsa **fan yazma denemesi yapmadan önce** bir issue açın
+
+**Fan kontrolünü kesinlikle denemeyeceğiniz markalar:** MSI, ASUS, Lenovo, Dell, HP.  
+**Do NOT attempt fan control on:** MSI, ASUS, Lenovo, Dell, HP.
+
+---
+
 ## 🏗️ Mimari / Architecture
 
 ```

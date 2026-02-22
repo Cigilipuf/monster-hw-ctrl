@@ -5,7 +5,7 @@ Ana giriş noktası.
 
 Kullanım:
     python3 -m src.main                  # GUI başlat
-    sudo python3 -m src.main --daemon    # Arka plan daemon
+    sudo python3 -m src.main daemon      # Arka plan daemon
     python3 -m src.main status           # Anlık durum özeti
     python3 -m src.main profile list     # Profilleri listele
     python3 -m src.main profile apply <ad>  # Profil uygula
@@ -329,7 +329,7 @@ def main():
 
     cmd = args.command
 
-    if cmd == "daemon" or (len(sys.argv) > 1 and sys.argv[1] == "--daemon"):
+    if cmd == "daemon":
         run_daemon()
     elif cmd == "status":
         cmd_status(args)

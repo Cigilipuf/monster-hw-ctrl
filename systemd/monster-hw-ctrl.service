@@ -1,10 +1,10 @@
 [Unit]
 Description=Monster TULPAR T5 Hardware Controller Daemon
-After=multi-user.target graphical.target
+After=multi-user.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 -m src.main --daemon
+ExecStart=/usr/bin/python3 -m src.main daemon
 WorkingDirectory=/opt/monster-hw-ctrl
 Restart=on-failure
 RestartSec=5

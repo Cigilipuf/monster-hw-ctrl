@@ -27,6 +27,26 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
+# Kaldırma modu — kurulumdan önce kontrol et
+if [ "${1}" = "--uninstall" ]; then
+    echo ""
+    info "Kaldırılıyor..."
+
+    systemctl stop monster-hw-ctrl 2>/dev/null || true
+    systemctl disable monster-hw-ctrl 2>/dev/null || true
+
+    rm -f /etc/systemd/system/monster-hw-ctrl.service
+    rm -f /usr/share/polkit-1/actions/com.monster.hwctrl.policy
+    rm -f /usr/share/applications/monster-hw-ctrl.desktop
+    rm -f /usr/local/bin/monster-hw-ctrl
+    rm -rf "$INSTALL_DIR"
+
+    systemctl daemon-reload
+
+    ok "Kaldırma tamamlandı"
+    exit 0
+fi
+
 echo ""
 echo "╔══════════════════════════════════════════════════╗"
 echo "║  Monster TULPAR T5 V19.2 - Donanım Kontrolcüsü ║"
@@ -94,7 +114,7 @@ cat > /usr/share/applications/monster-hw-ctrl.desktop << EOF
 [Desktop Entry]
 Name=Monster HW Controller
 Comment=Monster TULPAR T5 Donanım Kontrolcüsü
-Exec=pkexec /usr/bin/python3 -m src.main
+Exec=pkexec /usr/bin/python3 /opt/monster-hw-ctrl/src/main.py
 Path=/opt/monster-hw-ctrl
 Icon=preferences-system
 Terminal=false
@@ -132,21 +152,4 @@ echo "║                                                 ║"
 echo "╚══════════════════════════════════════════════════╝"
 echo ""
 
-# Kaldırma fonksiyonu
-if [ "${1}" = "--uninstall" ]; then
-    echo ""
-    info "Kaldırılıyor..."
-    
-    systemctl stop monster-hw-ctrl 2>/dev/null || true
-    systemctl disable monster-hw-ctrl 2>/dev/null || true
-    
-    rm -f /etc/systemd/system/monster-hw-ctrl.service
-    rm -f /usr/share/polkit-1/actions/com.monster.hwctrl.policy
-    rm -f /usr/share/applications/monster-hw-ctrl.desktop
-    rm -f /usr/local/bin/monster-hw-ctrl
-    rm -rf "$INSTALL_DIR"
-    
-    systemctl daemon-reload
-    
-    ok "Kaldırma tamamlandı"
-fi
+

@@ -5,7 +5,7 @@
 <policyconfig>
 
   <vendor>Monster HW Controller</vendor>
-  <vendor_url>https://github.com/monster-hw-ctrl</vendor_url>
+  <vendor_url>https://github.com/Cigilipuf/monster-hw-ctrl</vendor_url>
 
   <action id="com.monster.hwctrl.launch">
     <description>Monster TULPAR T5 Donanım Kontrolcüsünü Başlat</description>
